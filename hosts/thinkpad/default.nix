@@ -9,6 +9,7 @@
 {
   imports = [
     inputs.disko.nixosModules.disko
+    inputs.lanzaboote.nixosModules.lanzaboote
     ./hardware-configuration.nix
     ./disk-config.nix
     ../../system/nixos.nix
@@ -49,9 +50,13 @@
   boot = {
     loader = {
       systemd-boot = {
-        enable = true;
+        enable = lib.mkForce false;
       };
       efi.canTouchEfiVariables = true;
+    };
+    lanzaboote = {
+      enable = true;
+      pkiBundle = "/var/lib/sbctl";
     };
     kernelPackages = pkgs.linuxPackages_latest;
     kernel.sysctl = {

@@ -74,6 +74,7 @@
       dnsutils
       jnettop
       pciutils
+      sbctl
     ];
 
     variables = {
