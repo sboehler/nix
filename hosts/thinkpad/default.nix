@@ -98,6 +98,7 @@
 
   systemd.sleep.settings.Sleep = {
     AllowSuspendThenHibernate = "yes";
+    SuspendState = "mem";
   };
 
   environment.systemPackages = with pkgs; [
