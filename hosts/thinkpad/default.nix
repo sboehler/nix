@@ -68,9 +68,26 @@
       # Compress the hibernation snapshot (saves write/read time on SSDs)
       "hibernate.compress=1"
 
-      # Limit image size to roughly 40-50% of RAM (forces pages to be dropped/compressed)
-      # This makes the image smaller, drastically shortening disk I/O time.
+      # Preferred *upper bound* on the hibernation image, in bytes; 0 means
+      # "make the image as small as possible". Note this does not impose a
+      # 40-50% limit -- ~40% of RAM (2/5 of totalram) is the kernel's own
+      # default, which this value overrides downwards. A smaller image means
+      # less disk I/O writing and reading the snapshot, at the cost of more
+      # page reclaim before the snapshot is taken.
       "image_size=0"
+
+      # Bitwarden Desktop holds an open memfd_secret() fd for its entire lifetime.
+      # The kernel refuses hibernation while any secretmem user exists, because
+      # secretmem pages are deliberately unmappable and so cannot be written into
+      # the hibernation image (hibernation_available() checks !secretmem_active()).
+      # Symptom: /sys/power/disk reads "[disabled]", /sys/power/state loses "disk",
+      # and logind reports CanHibernate/CanSuspendThenHibernate = "na" -- which in
+      # turn makes PowerDevil's SleepMode=3 battery profile silently do nothing on
+      # lid close, so the laptop stays awake on battery. Disabling secretmem makes
+      # memfd_secret() return -ENOSYS so callers fall back to ordinary memory.
+      # Trade-off: those secrets may now appear in the hibernation image, which
+      # lives on /.swap/swapfile on the LUKS-encrypted volume (encrypted at rest).
+      "secretmem.enable=0"
     ];
   };
 
