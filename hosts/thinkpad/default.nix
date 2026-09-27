@@ -112,13 +112,19 @@
   };
 
   # services.fprintd.enable makes fprintAuth default to true for every PAM
-  # service, which inserts "auth sufficient pam_fprintd.so" into /etc/pam.d/login
-  # *before* pam_unix and pam_kwallet5. plasmalogin substacks login, so the
-  # greeter asks for a fingerprint, and a successful scan short-circuits the
-  # stack: pam_kwallet5 never receives the password and kwallet prompts again
-  # after login. Fingerprint stays available for sudo, polkit and the lock
-  # screen (kde-fingerprint), which use their own stacks.
-  security.pam.services.login.fprintAuth = false;
+  # service, which inserts "auth sufficient pam_fprintd.so" into their auth
+  # stacks. Fingerprint stays available for sudo, polkit and the lock screen
+  # (kde-fingerprint), which use their own stacks.
+  security.pam.services = {
+    # pam_fprintd lands *before* pam_unix and pam_kwallet5, and plasmalogin
+    # substacks login, so the greeter asks for a fingerprint and a successful
+    # scan short-circuits the stack: pam_kwallet5 never receives the password
+    # and kwallet prompts again after login.
+    login.fprintAuth = false;
+
+    # No sensor to read over a network session.
+    sshd.fprintAuth = false;
+  };
 
   services = {
     hardware.bolt.enable = true;
