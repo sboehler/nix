@@ -33,49 +33,6 @@
   boot.kernelModules = [ "kvm-intel" ];
   boot.extraModulePackages = [ ];
 
-  fileSystems."/" = {
-    device = "rpool/enc/nixos-root";
-    fsType = "zfs";
-    neededForBoot = true;
-  };
-
-  fileSystems."/boot" = {
-    device = "/dev/disk/by-uuid/2CA6-A865";
-    fsType = "vfat";
-    options = [
-      "fmask=0022"
-      "dmask=0022"
-    ];
-  };
-
-  fileSystems."/boot2" = {
-    device = "/dev/disk/by-uuid/2E63-F143";
-    fsType = "vfat";
-    options = [
-      "fmask=0022"
-      "dmask=0022"
-    ];
-  };
-
-  fileSystems."/nix" = {
-    device = "rpool/enc/nixos-nix";
-    fsType = "zfs";
-    neededForBoot = true;
-  };
-
-  fileSystems."/home" = {
-    device = "rpool/enc/nixos-home";
-    fsType = "zfs";
-  };
-
-  fileSystems."/persist" = {
-    device = "rpool/enc/nixos-persist";
-    fsType = "zfs";
-    neededForBoot = true;
-  };
-
-  swapDevices = [ ];
-
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
   hardware.cpu.intel.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
 }

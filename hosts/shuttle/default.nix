@@ -2,11 +2,14 @@
   config,
   lib,
   pkgs,
+  inputs,
   ...
 }:
 
 {
   imports = [
+    inputs.disko.nixosModules.disko
+    inputs.lanzaboote.nixosModules.lanzaboote
     ./hardware-configuration.nix
     ../../system/nixos.nix
     ../../modules/mbsync.nix
@@ -16,28 +19,17 @@
     ../../modules/tailscale.nix
     ../../modules/restic.nix
     ./observability.nix
+    ./disk-config.nix
   ];
 
   boot = {
     loader = {
-      grub = {
+      systemd-boot = {
         enable = true;
-        device = "nodev";
-        efiSupport = true;
-        configurationLimit = 5;
-        mirroredBoots = [
-          {
-            devices = [ "/dev/disk/by-id/ata-Samsung_SSD_860_QVO_4TB_S4CXNF0M310137V" ];
-            path = "/boot";
-          }
-          {
-            devices = [ "/dev/disk/by-id/nvme-CT4000P3SSD8_2310E6B97FF9" ];
-            path = "/boot2";
-          }
-        ];
       };
       efi.canTouchEfiVariables = true;
     };
+
     initrd = {
       supportedFilesystems = [ "zfs" ];
       network = {
@@ -54,16 +46,9 @@
     };
     supportedFilesystems = [ "zfs" ];
     zfs = {
-      devNodes = "/dev/disk/by-id";
-      requestEncryptionCredentials = true;
-      extraPools = [ "rpool" ];
-      forceImportRoot = true;
+      forceImportRoot = false;
     };
   };
-
-  # boot.initrd.postDeviceCommands = lib.mkAfter ''
-  # zfs rollback -r rpool/local/root@blank
-  # '';
 
   networking = {
     hostName = "shuttle";
@@ -74,6 +59,27 @@
   powerManagement = {
     cpuFreqGovernor = "powersave";
     powertop.enable = true;
+  };
+
+  systemd.paths.sync-esp = {
+    wantedBy = [ "multi-user.target" ];
+    pathConfig.PathChanged = [
+      "/boot/EFI/Linux"
+      "/boot/EFI/nixos"
+      "/boot/loader/entries"
+      "/boot/loader"
+    ];
+  };
+  systemd.services.sync-esp = {
+    description = "Mirror /boot to /boot-fallback";
+    unitConfig.RequiresMountsFor = [
+      "/boot"
+      "/boot-fallback"
+    ];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${pkgs.rsync}/bin/rsync -a --delete /boot/ /boot-fallback/";
+    };
   };
 
   services = {
@@ -94,7 +100,7 @@
         autoprune = true;
       };
 
-      datasets."rpool/enc/data" = {
+      datasets."rpool/data" = {
         useTemplate = [ "production" ];
         recursive = "zfs"; # Recursively find child datasets
         processChildrenOnly = true; # Snapshot child datasets, but NOT enc/data itself

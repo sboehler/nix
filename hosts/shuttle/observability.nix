@@ -9,7 +9,7 @@
       server = {
         domain = "shuttle.tortoise-inconnu.ts.net";
         http_port = 2342;
-        http_addr = "100.64.0.1";
+        http_addr = "0.0.0.0";
       };
       security = {
         secret_key = config.sops.secrets.grafana_secret_key.path;
