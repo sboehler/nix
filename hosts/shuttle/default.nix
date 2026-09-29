@@ -9,7 +9,6 @@
 {
   imports = [
     inputs.disko.nixosModules.disko
-    inputs.lanzaboote.nixosModules.lanzaboote
     ./hardware-configuration.nix
     ../../system/nixos.nix
     ../../modules/mbsync.nix
@@ -24,11 +23,14 @@
 
   boot = {
     loader = {
-      systemd-boot = {
-        enable = true;
-      };
+      systemd-boot.enable = true;
       efi.canTouchEfiVariables = true;
     };
+
+    # lanzaboote = {
+    #   enable = true;
+    #   pkiBundle = "/var/lib/sbctl";
+    # };
 
     initrd = {
       supportedFilesystems = [ "zfs" ];
@@ -38,11 +40,11 @@
           enable = true;
           port = 2222;
           hostKeys = [ "/etc/ssh/ssh_host_ed25519_key" ];
-          authorizedKeys = [
-            "ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBAHiEKQFsgRXTSzCQnDj/V1o8IeorD17qGOJT1oyZSUOlbE2dLeannUed/J1B9nuRniQlQkzwV+jNWONC3yDEM7ogADLYby9t290VYEm5xL+FpxYAdPpz8oXnGtDoITI8ebxqJry0Y2Sc3a/2lkDMKsRzACdEHS94e2VbDA28NsM8kew9A=="
-          ];
+          authorizedKeys = config.users.users.silvio.openssh.authorizedKeys.keys;
         };
       };
+      # When the following line is on, root can't log in:
+      # systemd.users.root.shell = "${pkgs.systemd}/bin/systemd-tty-ask-password-agent";
     };
     supportedFilesystems = [ "zfs" ];
     zfs = {

@@ -9,7 +9,6 @@
 {
   imports = [
     inputs.disko.nixosModules.disko
-    inputs.lanzaboote.nixosModules.lanzaboote
     ./hardware-configuration.nix
     ./disk-config.nix
     ../../system/nixos.nix
