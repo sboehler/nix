@@ -76,7 +76,8 @@
             user = "silvio";
             timerConfig = {
               OnCalendar = "*-*-* 03:00:00";
-              RandomizedDelaySec = "1h";
+              RandomizedDelaySec = "10min";
+              Persistent = true;
             };
           };
         in

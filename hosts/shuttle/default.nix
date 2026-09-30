@@ -73,6 +73,55 @@
     linkConfig.WakeOnLan = "magic";
   };
 
+  # Suspend after an hour of inactivity. Any login (local tty or ssh) keeps the
+  # machine awake indefinitely, even when idle; the remaining checks stop us
+  # from suspending on top of a running backup or an active Samba client. An
+  # RTC alarm is armed before the nightly restic timers so the box wakes up for
+  # them; every other timer is Persistent= and catches up after a wake.
+  services.autosuspend = {
+    enable = true;
+
+    settings = {
+      interval = 60; # check once a minute
+      idle_time = 900; # all checks quiet for 15min -> suspend
+      min_sleep_time = 900; # don't suspend if we'd wake again within 15min
+      wakeup_delta = 60; # wake 5min before a scheduled wakeup
+    };
+
+    checks = {
+      # Any login, local or over ssh: both land in utmp.
+      Users = {
+        name = ".*";
+        terminal = ".*";
+        host = ".*";
+      };
+
+      # ssh activity without a login session: scp/rsync/git, port forwards.
+      SshConnections = {
+        class = "ActiveConnection";
+        ports = "22";
+      };
+
+      # Open Samba sessions.
+      Smb = { };
+
+      # Long-running jobs that must not be cut off mid-flight.
+      Jobs = {
+        class = "Processes";
+        processes = "restic,mbsync,rsync,zpool";
+      };
+
+      Load.threshold = 1.0;
+    };
+
+    wakeups = {
+      Backups = {
+        class = "SystemdTimer";
+        match = "restic-backups-.*";
+      };
+    };
+  };
+
   systemd.paths.sync-esp = {
     wantedBy = [ "multi-user.target" ];
     pathConfig.PathChanged = [

@@ -48,6 +48,7 @@
         wantedBy = [ "timers.target" ];
         timerConfig = {
           OnCalendar = "*-*-* 07,08,09,10:15:00";
+          Persistent = true;
           Unit = "withings-sync.service";
         };
       };
