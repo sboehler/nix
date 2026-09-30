@@ -67,6 +67,9 @@
         owner = "root";
         mode = "0555";
       };
+      shuttle_mac_address = {
+        owner = "silvio";
+      };
     };
   };
 

@@ -35,6 +35,7 @@
       stow
       tmux
       tree
+      wakeonlan
     ];
   };
 
@@ -181,6 +182,8 @@
       shellAliases = {
         ls = "eza";
         cat = "bat";
+        shuttle-wake = "wakeonlan -i 192.168.1.255 $(cat /run/secrets/shuttle_mac_address)";
+        shuttle-suspend = "ssh shuttle 'sudo systemd-run --on-active=2s systemctl suspend'";
       };
       defaultKeymap = "viins";
 

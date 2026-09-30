@@ -63,6 +63,16 @@
     powertop.enable = true;
   };
 
+  # The RTL8156 USB-Ethernet adapter (main NIC) defaults to waking on any
+  # PHY/unicast/multicast/broadcast activity, not just a magic packet. On a
+  # busy LAN that means it resumes from suspend within seconds of going to
+  # sleep. Restrict wake sources to magic-packet only, so WOL still works
+  # but ambient broadcast/multicast traffic no longer wakes it.
+  systemd.network.links."10-rtl8156" = {
+    matchConfig.MACAddress = "3c:49:37:05:5f:9b";
+    linkConfig.WakeOnLan = "magic";
+  };
+
   systemd.paths.sync-esp = {
     wantedBy = [ "multi-user.target" ];
     pathConfig.PathChanged = [

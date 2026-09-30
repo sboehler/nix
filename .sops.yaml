@@ -2,6 +2,7 @@ keys:
   - &admin age1xnej4xradsl26qhe9cy90jtmevk3e3wpr2tfpmkd7zsdncku83psmsez5x
   - &shuttle age1z9lyq4wxgthh22nydlhwsuxm4jhfr57q604345z69689w84ytg6qahrt3x
   - &thinkpad age12uupylhwfyxuwe7j44u45r3utqq9khypd6vlj3verafra7pjpypqulewut
+  - &mba age1y7sj97ykxtwmpk0yrjhjn0nku44unsc0p78588gzlcyu6pyeagxsff7tfs
 
 creation_rules:
   - path_regex: secrets/[^/]+\.(yaml|json|env|text)$
@@ -9,3 +10,4 @@ creation_rules:
       - *admin
       - *shuttle
       - *thinkpad
+      - *mba
