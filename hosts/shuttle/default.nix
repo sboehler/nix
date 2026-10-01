@@ -112,7 +112,7 @@
       # Long-running jobs that must not be cut off mid-flight.
       Jobs = {
         class = "Processes";
-        processes = "restic,mbsync,rsync,zpool";
+        processes = "restic,mbsync,rsync,zpool,syncoid";
       };
 
       Load.threshold = 1.0;
@@ -122,6 +122,11 @@
       Backups = {
         class = "SystemdTimer";
         match = "restic-backups-.*";
+      };
+
+      Replication = {
+        class = "SystemdTimer";
+        match = "syncoid-.*";
       };
     };
   };
@@ -135,20 +140,63 @@
   systemd.services.autosuspend.path = [ pkgs.bash ];
 
   # The SATA SSD is an external backup disk holding rpool_backup -- out of the
-  # boot path and absent from disk-config.nix -- so it is unlocked in stage 2
-  # from a static sops key instead of by the initrd via TPM. sops secrets are
-  # installed by initrd-nixos-activation.service before switch-root, so the key
-  # file is already there when systemd-cryptsetup runs.
+  # boot path and absent from disk-config.nix -- unlocked in stage 2 from a
+  # static sops key rather than by the initrd. sops secrets are installed by
+  # initrd-nixos-activation.service before switch-root, so the key file is
+  # already there when systemd-cryptsetup runs.
   #
   # `nofail` is what makes this optional: the generator then only Wants= the
   # unit from cryptsetup.target without ordering it Before=, so an unplugged
-  # disk neither delays nor fails the boot. by-partlabel rather than a device
-  # path, so this still works once the disk moves to USB.
+  # disk neither delays nor fails the boot.
+  #
+  # The disk carries one GPT partition labelled samsung-860-4tb-luks and nothing
+  # else. by-partlabel lives in the GPT, so it travels with the disk and stays
+  # correct once this moves into a USB enclosure. The label names the drive
+  # itself, so swapping in a different disk means relabelling here too; the
+  # mapper name stays role-based and survives such a swap.
   sops.secrets.sata_luks_key = { };
 
   environment.etc.crypttab.text = ''
-    crypt-sata /dev/disk/by-partlabel/disk-sata-luks ${config.sops.secrets.sata_luks_key.path} luks,nofail,discard,no-read-workqueue,no-write-workqueue
+    crypt-backup /dev/disk/by-partlabel/samsung-860-4tb-luks ${config.sops.secrets.sata_luks_key.path} luks,nofail,discard,no-read-workqueue,no-write-workqueue
   '';
+
+  # Import the backup pool once its disk is unlocked. Deliberately not
+  # boot.zfs.extraPools: that unit is requiredBy zfs-import.target and retries
+  # for 60s before failing, so every boot without the disk would stall and then
+  # fail. Here a missing pool is a clean no-op instead, which also covers the
+  # disk being present but the unlock having failed.
+  #
+  # -N imports without mounting. -R sets an altroot so that even a stray
+  # `zfs mount -a` puts these datasets under /run/rpool_backup rather than on
+  # top of the live ones; it also implies cachefile=none, keeping the pool out
+  # of /etc/zfs/zpool.cache.
+  systemd.services.import-rpool-backup = {
+    description = "Import the external ZFS backup pool";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "systemd-cryptsetup@crypt\\x2dbackup.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = pkgs.writeShellScript "import-rpool-backup" ''
+        set -eu
+        zpool="${config.boot.zfs.package}/sbin/zpool"
+
+        if "$zpool" list -H -o name rpool_backup >/dev/null 2>&1; then
+          echo "rpool_backup is already imported"
+          exit 0
+        fi
+
+        # Only attempt the import if the pool is actually visible; otherwise
+        # this is a no-op so the unit stays green with the disk detached.
+        if ! "$zpool" import 2>/dev/null | grep -qE '^[[:space:]]*pool: rpool_backup$'; then
+          echo "rpool_backup is not attached, nothing to do"
+          exit 0
+        fi
+
+        exec "$zpool" import -N -R /run/rpool_backup rpool_backup
+      '';
+    };
+  };
 
   services = {
 
@@ -182,6 +230,49 @@
       };
     };
 
+    # Replicate the sanoid-snapshotted datasets onto the external backup pool.
+    # --no-sync-snap sends sanoid's existing snapshots instead of creating
+    # syncoid's own, so the two commands below mirror the sanoid datasets above.
+    #
+    # recvOptions: -u never mounts on receive (an unprivileged zfs recv cannot
+    # mount anyway), and -x mountpoint drops the source's mountpoint from the
+    # stream so received datasets inherit mountpoint=none from rpool_backup
+    # instead of arriving pointed at the live /data/* paths.
+    #
+    # Note the absence of --force-delete: if the last common snapshot is ever
+    # lost, replication should fail loudly rather than quietly destroying the
+    # backup and resending 1.5T.
+    syncoid = {
+      enable = true;
+      interval = "02:00"; # an hour ahead of the restic timers
+      commonArgs = [ "--no-sync-snap" ];
+
+      # Only run when the backup disk is attached and unlocked. This has to be a
+      # unit Condition rather than ExecCondition: the module sets
+      # RootDirectory=/run/syncoid/<name> with RootDirectoryStartOnly=true, whose
+      # exemption covers ExecStartPre/ExecStopPost but not ExecCondition, so an
+      # ExecCondition gets chrooted into a directory that does not exist yet and
+      # dies at CHDIR before running. PID 1 evaluates Conditions outside any
+      # sandbox. crypt-backup is our own mapper name from crypttab, not a backing
+      # device path, so it stays correct once the disk moves to USB.
+      service = {
+        after = [ "import-rpool-backup.service" ];
+        requires = [ "import-rpool-backup.service" ];
+        unitConfig.ConditionPathExists = "/dev/mapper/crypt-backup";
+      };
+
+      commands = {
+        "rpool/data" = {
+          target = "rpool_backup/data";
+          recursive = true;
+          recvOptions = "u x mountpoint";
+        };
+        "rpool/var" = {
+          target = "rpool_backup/var";
+          recvOptions = "u x mountpoint";
+        };
+      };
+    };
     tailscale = {
       useRoutingFeatures = "server";
       extraUpFlags = [
