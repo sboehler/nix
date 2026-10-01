@@ -134,6 +134,22 @@
   # the 03:00 backups.
   systemd.services.autosuspend.path = [ pkgs.bash ];
 
+  # The SATA SSD is an external backup disk holding rpool_backup -- out of the
+  # boot path and absent from disk-config.nix -- so it is unlocked in stage 2
+  # from a static sops key instead of by the initrd via TPM. sops secrets are
+  # installed by initrd-nixos-activation.service before switch-root, so the key
+  # file is already there when systemd-cryptsetup runs.
+  #
+  # `nofail` is what makes this optional: the generator then only Wants= the
+  # unit from cryptsetup.target without ordering it Before=, so an unplugged
+  # disk neither delays nor fails the boot. by-partlabel rather than a device
+  # path, so this still works once the disk moves to USB.
+  sops.secrets.sata_luks_key = { };
+
+  environment.etc.crypttab.text = ''
+    crypt-sata /dev/disk/by-partlabel/disk-sata-luks ${config.sops.secrets.sata_luks_key.path} luks,nofail,discard,no-read-workqueue,no-write-workqueue
+  '';
+
   services = {
 
     zfs.autoScrub.enable = true;
