@@ -22,6 +22,10 @@
     services = {
       withings-sync = {
         description = "sync Withings data to Garmin";
+        # Persistent= timer: catches up right after a resume, when the network
+        # is not back yet. See modules/network-wait.nix.
+        requires = [ "wait-for-network.service" ];
+        after = [ "wait-for-network.service" ];
         path = [
           pkgs.podman
           pkgs.zfs

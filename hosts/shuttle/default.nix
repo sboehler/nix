@@ -12,6 +12,7 @@
     ./hardware-configuration.nix
     ../../system/nixos.nix
     ../../modules/mbsync.nix
+    ../../modules/network-wait.nix
     ../../modules/user.nix
     ../../modules/fileserver.nix
     ../../modules/withings-sync.nix
@@ -77,7 +78,10 @@
   # machine awake indefinitely, even when idle; the remaining checks stop us
   # from suspending on top of a running backup or an active Samba client. An
   # RTC alarm is armed before the nightly restic timers so the box wakes up for
-  # them; every other timer is Persistent= and catches up after a wake.
+  # them; every other timer is Persistent= and catches up after a wake. Those
+  # catch-up runs happen in the same second as the resume, so the ones that
+  # need the network wait on wait-for-network.service first -- see
+  # modules/network-wait.nix.
   services.autosuspend = {
     enable = true;
 
