@@ -175,8 +175,10 @@
 
       datasets."rpool/data" = {
         useTemplate = [ "production" ];
-        recursive = "zfs"; # Recursively find child datasets
-        processChildrenOnly = true; # Snapshot child datasets, but NOT enc/data itself
+        # One atomic `zfs snapshot -r` covering every child dataset.
+        # Must not be combined with processChildrenOnly: zfs-native recursion
+        # acts on this dataset, so excluding it leaves sanoid nothing to do.
+        recursive = "zfs";
       };
     };
 
