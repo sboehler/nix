@@ -217,6 +217,33 @@
         autoprune = true;
       };
 
+      # Retention on the backup pool, deliberately longer than the source's.
+      # Received snapshots are independent ZFS objects: pruning on the source
+      # does not propagate, and syncoid only ever prunes its own syncoid_*
+      # snapshots, so this policy is the only thing that deletes them. That is
+      # what lets the backup hold months of history the source no longer has.
+      #
+      # Two constraints, both easy to get wrong. Every type must be declared,
+      # because anything omitted defaults to 0 and sanoid destroys types set to 0
+      # immediately. And no type may be shorter than the source's, or pruning
+      # here could take the last common snapshot and, with no --force-delete on
+      # the syncoid side, stop replication dead -- which is why frequently stays
+      # at the source's 4 rather than dropping to 0.
+      #
+      # Cheap in space: snapshots only pin changed blocks, and this data is
+      # mostly static media.
+      templates.backup = {
+        autosnap = false; # snapshots arrive by replication, never taken here
+        autoprune = true;
+
+        frequently = 4;
+        hourly = 72;
+        daily = 90;
+        weekly = 52;
+        monthly = 24;
+        yearly = 99;
+      };
+
       datasets."rpool/data" = {
         useTemplate = [ "production" ];
         # One atomic `zfs snapshot -r` covering every child dataset.
@@ -229,28 +256,19 @@
         useTemplate = [ "production" ];
       };
 
-      # The backup pool needs sanoid as well, but purely as a pruner: snapshots
-      # arrive there by replication, so autosnap is off. It reuses the production
-      # template rather than declaring its own retention, which guarantees the
-      # target keeps every snapshot type at least as long as the source does.
-      # That matters twice over: any type omitted from a template defaults to 0,
-      # and sanoid immediately destroys types set to 0 -- and pruning the target
-      # harder than the source could take the last common snapshot, which with no
-      # --force-delete on the syncoid side would stop replication dead.
-      #
-      # recursive = true prunes each child in its own right; the zfs-native
-      # recursion used on the source is only about taking atomic snapshots, which
-      # is not happening here. A detached disk just logs one "dataset does not
-      # exist" line per entry and sanoid carries on.
+      # The backup pool gets sanoid only as a pruner -- retention and the
+      # reasoning behind it live in templates.backup above. recursive = true
+      # prunes each child in its own right; the zfs-native recursion used on the
+      # source is only about taking atomic snapshots, which is not happening
+      # here. A detached disk just logs one "dataset does not exist" line per
+      # entry and sanoid carries on.
       datasets."rpool_backup/data" = {
-        useTemplate = [ "production" ];
-        autosnap = false;
+        useTemplate = [ "backup" ];
         recursive = true;
       };
 
       datasets."rpool_backup/var" = {
-        useTemplate = [ "production" ];
-        autosnap = false;
+        useTemplate = [ "backup" ];
       };
     };
 
