@@ -89,7 +89,7 @@
       interval = 60; # check once a minute
       idle_time = 900; # all checks quiet for 15min -> suspend
       min_sleep_time = 900; # don't suspend if we'd wake again within 15min
-      wakeup_delta = 60; # wake 5min before a scheduled wakeup
+      wakeup_delta = 60; # wake 1min before a scheduled wakeup
     };
 
     checks = {
@@ -125,6 +125,14 @@
       };
     };
   };
+
+  # autosuspend arms the RTC alarm by running its wakeup_cmd through a shell,
+  # and that command is itself `sh -c '...'`. The unit's PATH only carries
+  # samba, coreutils, findutils, grep, sed and systemd -- no shell -- so the
+  # inner `sh` was never found and arming failed with exit 127, leaving
+  # /sys/class/rtc/rtc0/wakealarm unset. The box then slept straight through
+  # the 03:00 backups.
+  systemd.services.autosuspend.path = [ pkgs.bash ];
 
   systemd.paths.sync-esp = {
     wantedBy = [ "multi-user.target" ];
