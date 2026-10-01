@@ -56,6 +56,10 @@
     services = {
       mbsyncd = {
         description = "mbsync";
+        # The hourly timer is Persistent=, so it fires the moment we resume --
+        # before DHCP is back. See modules/network-wait.nix.
+        requires = [ "wait-for-network.service" ];
+        after = [ "wait-for-network.service" ];
         serviceConfig = {
           User = "silvio";
           Type = "oneshot";

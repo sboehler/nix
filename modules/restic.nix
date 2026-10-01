@@ -126,4 +126,17 @@
         };
     };
   };
+
+  # Every backup above is Persistent=, so a resume makes all of them start in
+  # the same second, long before the NIC and DHCP are back. The restic module
+  # already orders them after network-online.target, which is useless on wake
+  # because that target never went down -- gate them on a check that actually
+  # re-runs instead. See modules/network-wait.nix.
+  systemd.services = lib.mapAttrs' (
+    name: _:
+    lib.nameValuePair "restic-backups-${name}" {
+      requires = [ "wait-for-network.service" ];
+      after = [ "wait-for-network.service" ];
+    }
+  ) config.services.restic.backups;
 }
