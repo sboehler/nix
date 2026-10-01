@@ -1,18 +1,5 @@
-# disko.nix — Option B: ZFS mirror on LUKS2, NVMe + SATA SSD
-#
-# WARNING: formatting DESTROYS all data on both disks. Back up your
-# existing pool first (and verify the restore) before running this.
-#
-# Install with nixos-anywhere (copies the passphrase to /tmp/secret.key
-# on the target before disko runs):
-#   nixos-anywhere \
-#     --disk-encryption-keys /tmp/secret.key <(read -rsp "LUKS passphrase: " p && echo -n "$p") \
-#     --generate-hardware-config nixos-generate-config ./hardware-configuration.nix \
-#     --flake .#homeserver \
-#     root@homeserver
-#
 # Partition labels created (used for TPM enrollment later):
-#   disk-nvme-ESP, disk-nvme-luks, disk-sata-ESP, disk-sata-luks
+#   disk-nvme-ESP, disk-nvme-luks
 {
   disko.devices = {
     disk = {
@@ -28,7 +15,7 @@
               content = {
                 type = "filesystem";
                 format = "vfat";
-                mountpoint = "/boot"; # primary ESP, managed by lanzaboote
+                mountpoint = "/boot"; # managed by lanzaboote
                 mountOptions = [ "umask=0077" ];
               };
             };
@@ -52,52 +39,13 @@
           };
         };
       };
-
-      sata = {
-        type = "disk";
-        device = "/dev/disk/by-id/ata-Samsung_SSD_860_QVO_4TB_S4CXNF0M310137V"; # ls -l /dev/disk/by-id/
-        content = {
-          type = "gpt";
-          partitions = {
-            ESP = {
-              type = "EF00";
-              size = "2G";
-              content = {
-                type = "filesystem";
-                format = "vfat";
-                mountpoint = "/boot-fallback"; # copy of /boot, kept in sync
-                mountOptions = [
-                  "umask=0077"
-                  "nofail"
-                ];
-              };
-            };
-            luks = {
-              size = "100%";
-              content = {
-                type = "luks";
-                name = "crypt-sata";
-                passwordFile = "/tmp/secret.key";
-                settings = {
-                  allowDiscards = true;
-                  bypassWorkqueues = true;
-                  crypttabExtraOpts = [ "tpm2-device=auto" ];
-                };
-                content = {
-                  type = "zfs";
-                  pool = "rpool";
-                };
-              };
-            };
-          };
-        };
-      };
     };
 
     zpool = {
+      # Single vdev on crypt-nvme -- no `mode`, which is disko's default for a
+      # striped/single-disk pool.
       rpool = {
         type = "zpool";
-        mode = "mirror";
         options = {
           ashift = "12"; # 4K sectors; fixed at creation, cannot be changed later
           autotrim = "on";

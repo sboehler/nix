@@ -134,27 +134,6 @@
   # the 03:00 backups.
   systemd.services.autosuspend.path = [ pkgs.bash ];
 
-  systemd.paths.sync-esp = {
-    wantedBy = [ "multi-user.target" ];
-    pathConfig.PathChanged = [
-      "/boot/EFI/Linux"
-      "/boot/EFI/nixos"
-      "/boot/loader/entries"
-      "/boot/loader"
-    ];
-  };
-  systemd.services.sync-esp = {
-    description = "Mirror /boot to /boot-fallback";
-    unitConfig.RequiresMountsFor = [
-      "/boot"
-      "/boot-fallback"
-    ];
-    serviceConfig = {
-      Type = "oneshot";
-      ExecStart = "${pkgs.rsync}/bin/rsync -a --delete /boot/ /boot-fallback/";
-    };
-  };
-
   services = {
 
     zfs.autoScrub.enable = true;
@@ -163,9 +142,10 @@
       enable = true;
 
       templates.production = {
-        frequently = 0;
+        frequently = 4;
         hourly = 24;
         daily = 7;
+        weekly = 5;
         monthly = 12;
         yearly = 99;
 
@@ -179,6 +159,10 @@
         # Must not be combined with processChildrenOnly: zfs-native recursion
         # acts on this dataset, so excluding it leaves sanoid nothing to do.
         recursive = "zfs";
+      };
+
+      datasets."rpool/var" = {
+        useTemplate = [ "production" ];
       };
     };
 
