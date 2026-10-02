@@ -123,11 +123,6 @@
         class = "SystemdTimer";
         match = "restic-backups-.*";
       };
-
-      Replication = {
-        class = "SystemdTimer";
-        match = "syncoid-.*";
-      };
     };
   };
 
@@ -286,7 +281,7 @@
     # backup and resending 1.5T.
     syncoid = {
       enable = true;
-      interval = "02:00"; # an hour ahead of the restic timers
+      interval = "*:10:00";
       commonArgs = [ "--no-sync-snap" ];
 
       # Only run when the backup disk is attached and unlocked. This has to be a
@@ -323,6 +318,14 @@
       ];
     };
   };
+
+  # The syncoid module exposes service config but not timer config, so
+  # Persistent= has to be set on the generated timers directly. Same convention
+  # as the restic timers here: catch up once after a boot or a long suspend
+  # rather than silently skipping the missed run.
+  systemd.timers = lib.genAttrs [ "syncoid-rpool-data" "syncoid-rpool-var" ] (_: {
+    timerConfig.Persistent = true;
+  });
 
   system.stateVersion = "26.05"; # Did you read the comment?
 }
