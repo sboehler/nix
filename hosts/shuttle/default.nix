@@ -83,7 +83,7 @@
   # need the network wait on wait-for-network.service first -- see
   # modules/network-wait.nix.
   services.autosuspend = {
-    enable = true;
+    enable = false;
 
     settings = {
       interval = 60; # check once a minute
