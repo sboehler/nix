@@ -1,10 +1,16 @@
-{ inputs, pkgs, ... }:
+{
+  inputs,
+  pkgs-unstable,
+  pkgs,
+  ...
+}:
 {
   imports = [
     inputs.sops-nix.nixosModules.sops
     inputs.home-manager.nixosModules.home-manager
     inputs.lanzaboote.nixosModules.lanzaboote
   ];
+  home-manager.extraSpecialArgs = { inherit pkgs-unstable; };
   home-manager.useGlobalPkgs = true;
   home-manager.useUserPackages = true;
   home-manager.users.silvio = {

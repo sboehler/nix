@@ -7,6 +7,9 @@
     # Stable Nixpkgs (use 0.1 for unstable)
     nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0";
 
+    # Unstable Nixpkgs, for packages that need to track upstream closely
+    nixpkgs-unstable.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1";
+
     # Stable nix-darwin (use 0.1 for unstable)
     nix-darwin = {
       url = "https://flakehub.com/f/nix-darwin/nix-darwin/0";
@@ -44,11 +47,29 @@
   # Flake outputs
   outputs =
     { self, ... }@inputs:
+    let
+      # Shared nixpkgs config for instances we import ourselves
+      config = {
+        allowUnfree = true;
+      };
+
+      # Unstable nixpkgs instance, for packages that track upstream closely
+      pkgs-unstable =
+        system:
+        import inputs.nixpkgs-unstable {
+          inherit system config;
+        };
+
+      mkSpecialArgs = system: {
+        inherit inputs;
+        pkgs-unstable = pkgs-unstable system;
+      };
+    in
     {
       # nix-darwin configuration output
       darwinConfigurations.mba = inputs.nix-darwin.lib.darwinSystem {
         system = "aarch64-darwin";
-        specialArgs = { inherit inputs; };
+        specialArgs = mkSpecialArgs "aarch64-darwin";
         modules = [
           ./hosts/macbook
         ];
@@ -57,21 +78,21 @@
       # nix-darwin configuration output
       darwinConfigurations.mbp = inputs.nix-darwin.lib.darwinSystem {
         system = "aarch64-darwin";
-        specialArgs = { inherit inputs; };
+        specialArgs = mkSpecialArgs "aarch64-darwin";
         modules = [
           ./hosts/macbook
         ];
       };
 
       nixosConfigurations.thinkpad = inputs.nixpkgs.lib.nixosSystem {
-        specialArgs = { inherit inputs; };
+        specialArgs = mkSpecialArgs "x86_64-linux";
         modules = [
           ./hosts/thinkpad
         ];
       };
 
       nixosConfigurations.shuttle = inputs.nixpkgs.lib.nixosSystem {
-        specialArgs = { inherit inputs; };
+        specialArgs = mkSpecialArgs "x86_64-linux";
         modules = [
           ./hosts/shuttle
         ];

@@ -1,4 +1,4 @@
-{ inputs, ... }:
+{ inputs, pkgs-unstable, ... }:
 {
   imports = [
     inputs.determinate.darwinModules.default
@@ -6,6 +6,7 @@
     inputs.sops-nix.darwinModules.sops
   ];
 
+  home-manager.extraSpecialArgs = { inherit pkgs-unstable; };
   home-manager.useGlobalPkgs = true;
   home-manager.useUserPackages = true;
   home-manager.users.silvio = {
