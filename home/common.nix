@@ -182,7 +182,6 @@
       shellAliases = {
         ls = "eza";
         cat = "bat";
-        shuttle-wake = "wakeonlan -i 192.168.1.255 $(cat /run/secrets/shuttle_mac_address)";
         shuttle-suspend = "ssh shuttle 'sudo systemd-run --on-active=2s systemctl suspend'";
       };
       defaultKeymap = "viins";
@@ -224,6 +223,23 @@
           else
             command tmux "$@"
           fi
+        }
+
+        # Wake shuttle via WOL and block until it answers pings on the LAN
+        # (gives up after 2 minutes).
+        shuttle-wake() {
+          wakeonlan -i 192.168.1.255 "$(cat /run/secrets/shuttle_mac_address)" || return 1
+          print -n "Waiting for shuttle"
+          local deadline=$(( SECONDS + 120 ))
+          until ping -c 1 ${if pkgs.stdenv.isDarwin then "-t" else "-W"} 1 192.168.1.2 >/dev/null 2>&1; do
+            if (( SECONDS >= deadline )); then
+              print "\nshuttle did not respond within 2 minutes" >&2
+              return 1
+            fi
+            print -n "."
+            sleep 1
+          done
+          print "\nshuttle is up"
         }
       '';
     };
