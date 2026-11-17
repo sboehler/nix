@@ -3,6 +3,7 @@
   lib,
   pkgs,
   inputs,
+  pkgs-unstable,
   ...
 }:
 
@@ -17,6 +18,11 @@
   ];
 
   home-manager.users.silvio = {
+    home.packages = [
+      pkgs-unstable.antigravity-cli
+      pkgs-unstable.claude-code
+    ];
+
     programs = {
       firefox = {
         enable = true;

@@ -8,8 +8,4 @@
       wl-clipboard
     ];
   };
-
-  programs.claude-code = {
-    enable = true;
-  };
 }

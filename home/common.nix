@@ -19,7 +19,6 @@
     packages = with pkgs; [
       age
       bat
-      pkgs-unstable.claude-code
       direnv
       eza
       fzf
@@ -41,9 +40,6 @@
   };
 
   programs = {
-
-    # `enable` is set per-platform (see home/linux.nix); the package is shared.
-    claude-code.package = pkgs-unstable.claude-code;
 
     direnv = {
       enable = true;
